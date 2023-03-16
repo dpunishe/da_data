@@ -65,8 +65,26 @@ class CompanyLookup extends HTMLElement {
     // Insert the HTML into the shadow root
     this.shadowRoot.innerHTML = template;
 
-    // Replace with your API key
-    const token = "7fd18aaabd7d53ffa4846e4521c1f736c13490eb";
+    const apiUrl = "https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/party";
+    const apiKey = "${API_KEY}";
+    
+    const options = {
+      method: "POST",
+      mode: "cors",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": `Token ${apiKey}`
+      },
+      body: JSON.stringify
+    };
+    
+    fetch(apiUrl, options)
+      .then(response => response.text())
+      .then(result => console.log(result))
+      .catch(error => console.log("error", error));
+    
+    
 
     const join = (arr, separator = ", ") => {
       return arr.filter(n => n).join(separator);
