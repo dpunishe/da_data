@@ -8,7 +8,7 @@ const simplifyData = ({ data: { inn, kpp, type, name: { full_with_opf, short_wit
 
 const getData = async (query) => {
   const url = "https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/party";
-  const token = "e4d9f87635ba45611273fceca7e8e434c2f22248";
+  const token = "377cb1c41887efef37826f1db7956e742e0e92bc";
 
   const options = {
     method: "POST",
