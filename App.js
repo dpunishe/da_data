@@ -7,59 +7,86 @@ class CompanyLookup extends HTMLElement {
 
     // Create the HTML for the component
     const template = `
-      <style>
-        body {
-          padding: 1rem;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        }
+    <div class="wrapper">
+  
+  <section class="result">
+  <div class="row">
+    <p class="heading"><strong>Компания или ИП</strong></p>
+    <input class="input-field" id="party" name="party" type="text" placeholder="Введите название, ИНН, ОГРН или адрес организации">
+   </div>
+    <div class="row">
+      <input class="input-field" id="name_short" placeholder="Краткое наименование">
+    </div>
+    <div class="row">
+      <input class="input-field" id="name_full" placeholder="Полное наименование">
+    </div>
+    <div class="row">
+      <input class="input-field" id="inn_kpp" placeholder="ИНН / КПП">
+    </div>
+    <div class="row">
+      <input class="input-field" id="address" placeholder="Адрес">
+    </div>
+  </section> 
+  </div>
 
-        input {
-          font-size: 16px;
-          padding: 4px;
-        }
 
-        .result {
-          width: 50%;
-          min-width: 300px;
-        }
+  <style>
+  body {
+    padding: 1rem;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: #e8e8e8;
+    width: fit-content(300px);
+    height: fit-content(100px);
+  }
 
-        .row {
-          margin-top: 1em;
-        }
-
-        .row label {
-          display: block;
-          min-width: 10em;
-        }
-
-        .row input, .row textarea {
-          width: 100%;
-        }
-      </style>
-      <section class="container">
-        <p><strong>Компания или ИП</strong></p>
-        <input id="party" name="party" type="text" placeholder="Введите название, ИНН, ОГРН или адрес организации" />
-      </section>
-
-      <section class="result">
-        <p id="type"></p>
-        <div class="row">
-          <label>Краткое наименование</label>
-          <input id="name_short">
-        </div>
-        <div class="row">
-          <label>Полное наименование</label>
-          <input id="name_full">
-        </div>
-        <div class="row">
-          <label>ИНН / КПП</label>
-          <input id="inn_kpp">
-        </div>
-        <div class="row">
-          <label>Адрес</label>
-          <input id="address">
-        </div>
-      </section>
+  .wrapper {
+    width: 50%;
+    min-width: 300px;
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    border-radius: 30px;
+    background: #e0e0e0;
+    box-shadow: 15px 15px 30px #bebebe,
+               -15px -15px 30px #ffffff;
+  }
+  
+  .input-field {
+    border: none;
+    padding: 1rem;
+    border-radius: 1rem;
+    background: #e8e8e8;
+    transition: 0.3s;
+   }
+   
+   .input-field:focus {
+    outline-color: #e8e8e8;
+    background: #e8e8e8;
+    box-shadow: inset 20px 20px 60px #c5c5c5,
+       inset -20px -20px 60px #ffffff;
+    transition: 0.3s;
+   }
+  
+  .result {
+    width: 95%;
+    min-width: 300px;
+  }
+  
+  .row {
+    margin-top: 1em;
+  }
+  
+  .label {
+    min-width: 10em;
+    margin-left: 1em;
+  }
+  
+  .row input, .row textarea {
+    width: 100%;
+  }  
+  
+  </style>
+    
     `;
 
     // Insert the HTML into the shadow root
@@ -67,6 +94,7 @@ class CompanyLookup extends HTMLElement {
 
     const apiUrl = "https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/party";
     const apiKey = "${API_KEY}";
+    const query = "";
     
     const options = {
       method: "POST",
@@ -76,7 +104,7 @@ class CompanyLookup extends HTMLElement {
         "Accept": "application/json",
         "Authorization": `Token ${apiKey}`
       },
-      body: JSON.stringify
+      body: JSON.stringify({ query })
     };
     
     fetch(apiUrl, options)
@@ -86,47 +114,56 @@ class CompanyLookup extends HTMLElement {
     
     
 
-    const join = (arr, separator = ", ") => {
-      return arr.filter(n => n).join(separator);
-    };
+    // A function that concatenates an array with a separator string
+    const join = (arr, separator = ', ') => arr.filter(Boolean).join(separator);
 
-    const typeDescription = (type) => {
+    // A function that returns a description for a given type
+    const getTypeDescription = (type) => {
       const TYPES = {
-        INDIVIDUAL: "Индивидуальный предприниматель",
-        LEGAL: "Организация"
+        INDIVIDUAL: 'Индивидуальный предприниматель',
+        LEGAL: 'Организация',
       };
-
       return TYPES[type];
     };
 
-    const showSuggestion = suggestion => {
+    // A function that displays a suggestion to the user
+    const showSuggestion = (suggestion) => {
       console.log(suggestion);
       const { data } = suggestion;
-      if (!data) return;
-
-      const type = typeDescription(data.type);
-      this.shadowRoot.querySelector("#type").textContent = `${type} (${data.type})`;
-
-      if (data.name) {
-        this.shadowRoot.querySelector("#name_short").value = data.name.short_with_opf || "";
-        this.shadowRoot.querySelector("#name_full").value = data.name.full_with_opf || "";
+      if (!data) {
+        return;
       }
 
-      const innKpp = join([data.inn, data.kpp], " / ");
-      this.shadowRoot.querySelector("#inn_kpp").value = innKpp;
+      const { type, name, inn, kpp, address } = data;
 
-      if (data.address) {
-        let address = "";
-        if (data.address.data.qc == "0") {
-          address = join([data.address.data.postal_code, data.address.value]);
-        } else {
-          address = data.address.data.source;
-        }
-        this.shadowRoot.querySelector("#address").value = address;
+      // Display the type of the entity
+      $("#type").text(`${getTypeDescription(type)} (${type})`);
+
+      // Display the name of the entity
+      if (name) {
+        $("#name_short").val(name.short_with_opf ?? '');
+        $("#name_full").val(name.full_with_opf ?? '');
+      }
+
+      // Display the INN and KPP of the entity
+      $("#inn_kpp").val(join([inn, kpp], ' / '));
+
+      // Display the address of the entity
+      if (address) {
+        const { qc, postal_code, value, source } = address.data;
+        const addr = qc === '0' ? join([postal_code, value]) : source;
+        $("#address").val(addr);
       }
     };
 
-    this.shadowRoot.querySelector
+    // Initialize the "suggestions" plugin for the "party" input field
+    $("#party").suggestions({
+      token,
+      type: 'PARTY',
+      count: 5,
+      // Callback function that is called when a suggestion is selected by the user
+      onSelect: showSuggestion,
+    });
   }
 }
 
