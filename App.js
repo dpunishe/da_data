@@ -1,156 +1,149 @@
-class CompanyLookup extends HTMLElement {
+const simplifyData = ({ data: { inn, kpp, type, name: { full_with_opf, short_with_opf }, address: { value } } }) => ({
+  type,
+  name_short: short_with_opf,
+  name_full: full_with_opf,
+  inn_kpp: `${inn} / ${kpp}`,
+  address: value
+});
+
+const getData = async (query) => {
+  const url = "https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/party";
+  const token = "e4d9f87635ba45611273fceca7e8e434c2f22248";
+
+  const options = {
+    method: "POST",
+    mode: "cors",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `Token ${token}`
+    },
+    body: JSON.stringify({ query })
+  };
+
+  try {
+    const response = await fetch(url, options);
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error(error);
+    return {};
+  }
+};
+
+const getTypeDescription = (type) => {
+  const TYPES = {
+    'INDIVIDUAL': 'Индивидуальный предприниматель',
+    'LEGAL': 'Организация'
+  };
+  return TYPES[type] || '';
+};
+
+class PartyComponent extends HTMLElement {
   constructor() {
     super();
 
-    this.attachShadow({ mode: 'open' });
-    this.shadowRoot.innerHTML = `
-      <div class="wrapper">
-        <section class="result">
-          <div class="row">
-            <p class="heading"><strong>Компания или ИП</strong></p>
-            <input class="input-field" id="party" name="party" type="text" placeholder="Введите название, ИНН, ОГРН или адрес организации">
-          </div>
-          <div class="row">
-            <input class="input-field" id="name_short" placeholder="Краткое наименование">
-          </div>
-          <div class="row">
-            <input class="input-field" id="name_full" placeholder="Полное наименование">
-          </div>
-          <div class="row">
-            <input class="input-field" id="inn_kpp" placeholder="ИНН / КПП">
-          </div>
-          <div class="row">
-            <input class="input-field" id="address" placeholder="Адрес">
-          </div>
-        </section> 
-      </div>
-
-      <style>
-      <style>
-      body {
-        padding: 1rem;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        background-color: #e8e8e8;
-        width: fit-content(300px);
-        height: fit-content(100px);
-      }
     
-      .wrapper {
-        width: 50%;
-        min-width: 300px;
-        display: flex;
-        flex-direction: column;
-        padding: 16px;
-        border-radius: 30px;
-        background: #e0e0e0;
-        box-shadow: 15px 15px 30px #bebebe,
-                   -15px -15px 30px #ffffff;
-      }
-      
-      .input-field {
-        border: none;
-        padding: 1rem;
-        border-radius: 1rem;
-        background: #e8e8e8;
-        transition: 0.3s;
-       }
-       
-       .input-field:focus {
-        outline-color: #e8e8e8;
-        background: #e8e8e8;
-        box-shadow: inset 20px 20px 60px #c5c5c5,
-           inset -20px -20px 60px #ffffff;
-        transition: 0.3s;
-       }
-      
-      .result {
-        width: 95%;
-        min-width: 300px;
-      }
-      
-      .row {
-        margin-top: 1em;
-      }
-      
-      .label {
-        min-width: 10em;
-        margin-left: 1em;
-      }
-      
-      .row input, .row textarea {
-        width: 100%;
-      }  
-      
-      </style>
+    const moduleTemplate = document.createElement('template');
+    moduleTemplate.innerHTML = `
+      <style>
+        input {
+          font-size: 16px;
+          padding: 4px 0;
+          width: 100%;
+        }
         
-        `;
+        @media screen and (max-width: 600px) {
+          input {
+            font-size: 12px;
+          }
+        }
+        .container,
+        .result {
+          width: 100%;
+        }
+        
+        .row {
+          margin-top: 1em;
+        }
+        
+        .row label {
+          display: block;
+          min-width: 10em;
+        }
+      </style>
+      <section class="container">
+          <p><strong>Компания или ИП</strong></p>
+          <input id="party" name="party" type="text" list="datalist" placeholder="Введите название, ИНН, ОГРН или адрес организации" />
+          <datalist id="datalist"></datalist>
+          </div>
+      </section>
+      <section class="result">
+          <p id="type"></p>
+          <div class="row">
+              <label>Краткое наименование</label>
+              <input id="name_short">
+          </div>
+          <div class="row">
+              <label>Полное наименование</label>
+              <input id="name_full">
+          </div>
+          <div class="row">
+              <label>ИНН / КПП</label>
+              <input id="inn_kpp">
+          </div>
+          <div class="row">
+              <label>Адрес</label>
+              <input id="address">
+          </div>
+      </section>
+    `;
 
-    const url = 'https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/party';
-    const token = '7fd18aaabd7d53ffa4846e4521c1f736c13490eb';
-    const query = 'сбербанк';
-    const options = {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': `Token ${token}`
-      },
-      body: JSON.stringify({ query })
-    };
-    fetch(url, options)
-      .then(response => response.json())
-      .then(data => console.log(data))
-      .catch(error => console.error(error));
-    
-// Define a function that joins an array of elements with a separator
-const join = (arr, separator = ", ") => arr.filter(n => n).join(separator);
+    this.attachShadow({mode: 'open'});
+    this.shadowRoot.appendChild(moduleTemplate.content.cloneNode(true));
 
-// Define an object that maps type codes to descriptions
-const TYPES = {
-  'INDIVIDUAL': 'Индивидуальный предприниматель',
-    'LEGAL': 'Организация'
-};
+    this.partyInput = this.shadowRoot.querySelector('#party');
+    this.typeString = this.shadowRoot.querySelector('#type');
+    this.requisites = this.shadowRoot.querySelectorAll('.result input');
+    this.datalist = this.shadowRoot.querySelector('datalist');
 
-// Define a function that returns the description for a given type code
-const typeDescription = type => TYPES[type];
+    this.partyInput.addEventListener('input', async (event) => {
+      const { value } = event.target;
+      const { suggestions } = await getData(value);
+      this.suggestions = suggestions;
+      this.renderDatalist();
+    });
 
-// Define a function that displays a suggestion in the UI
-const showSuggestion = suggestion => {
-  console.log(suggestion);
-  const { data } = suggestion;
-  if (!data) {
-    return;
+    this.partyInput.addEventListener('change', (event) => {
+      [this.selectedCompany] = this.suggestions
+        .filter(({ value }) => value === event.target.value)
+        .map(simplifyData);
+      if (this.selectedCompany) {
+        this.renderRequisites();
+      }
+    });
   }
 
-  $("#type").text(`${typeDescription(data.type)} (${data.type})`);
-
-  if (data.name) {
-    $("#name_short").val(data.name.short_with_opf || "");
-    $("#name_full").val(data.name.full_with_opf || "");
+  renderDatalist() {
+    this.datalist.innerHTML = '';
+    this.suggestions.forEach(({ value: name, data: { inn, address: { value } } }) => {
+      const option = document.createElement('option');
+      option.value = name;
+      option.textContent = `${inn} ${value}`;
+      this.datalist.appendChild(option);
+    });
   }
 
-  $("#inn_kpp").val(join([data.inn, data.kpp], " / "));
 
-  if (data.address) {
-    let address = "";
-    if (data.address.data.qc === "0") {
-      address = join([data.address.data.postal_code, data.address.value]);
-    } else {
-      address = data.address.data.source;
+  renderRequisites() {
+    this.typeString.textContent = `${getTypeDescription(this.selectedCompany.type)} (${this.selectedCompany.type})`;
+
+    for (const input of this.requisites) {
+      const { id } = input;
+      input.value = this.selectedCompany[id];
     }
-    $("#address").val(address);
   }
-};
 
-// Set up the UI component for displaying suggestions
-$("#party").suggestions({
-  token: token,
-  type: "PARTY",
-  count: 5,
-  // Called when the user selects one of the suggestions
-  onSelect: showSuggestion
-});
-
-  }
 }
-customElements.define('company-lookup', CompanyLookup);
+
+  customElements.define('party-component', PartyComponent);
